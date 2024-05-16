@@ -156,10 +156,10 @@ const StockPurchaseForm = ({ navigation, route }) => {
         .then(async (response) => {
           fetchProducts();
           await resolveUnsavedSales(); //to auto saved a pending sale if the purchase was for that specific item
-          clearForm();
           setSubmitted(false);
           setLoading(false);
           snackBarRef.current.show("Stock entry saved successfully", 4000);
+          clearForm();
         })
         .catch((error) => {
           snackBarRef.current.show(error?.message, 5000);
@@ -168,6 +168,7 @@ const StockPurchaseForm = ({ navigation, route }) => {
         });
     }
   };
+  
 
   const populateForm = () => {
     if (route.params) {
@@ -414,7 +415,7 @@ const StockPurchaseForm = ({ navigation, route }) => {
             numberOfLines={3}
           />
 
-          <View style={styles.row}>
+          <View style={[styles.row, { marginTop: 15 }]}>
             <PrimaryButton
               darkMode={false}
               title={"Clear"}
@@ -441,7 +442,6 @@ const styles = StyleSheet.create({
   inputLabel: {
     marginVertical: 3,
     marginStart: 6,
-    marginTop: 5,
   },
   dropDown: {
     backgroundColor: Colors.light,

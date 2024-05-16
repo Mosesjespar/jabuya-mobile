@@ -1,4 +1,4 @@
-import { View, Text } from "react-native";
+import { View, Text, KeyboardAvoidingView } from "react-native";
 import React, { useEffect, useState, useRef } from "react";
 import Colors from "../../../constants/Colors";
 import AppStatusBar from "../../../components/AppStatusBar";
@@ -16,10 +16,12 @@ import { StyleSheet } from "react-native";
 import MyInput from "../../../components/MyInput";
 import ChipButton from "../../../components/buttons/ChipButton";
 import { FlatList } from "react-native";
+import { SHOP_PRODUCTS_ENDPOINT } from "../../../utils/EndPointUtils";
 
-const ProductEntry = () => {
+const ProductEntry = ({ navigation, route }) => {
   const { selectedShop } = useContext(UserContext);
 
+  const [edit, setEdit] = useState(false);
   const [manufacturers, setManufacturers] = useState([]);
   const [selectedManufacturer, setSelectedManufacturer] = useState(null);
   const [products, setProducts] = useState([]);
@@ -79,10 +81,9 @@ const ProductEntry = () => {
     let itemUnit = {
       id: 0,
       productSaleUnitId: id,
-      unitPrice: "",
+      unitPrice: "0",
       saleUnitName,
     };
-
     const isSelected = selectedSaleUnits?.find(
       (item) => item.productSaleUnitId === id
     );
@@ -119,13 +120,30 @@ const ProductEntry = () => {
   };
 
   const onProductChange = (e) => {
-    let { multipleSaleUnits } = e;
+    const { multipleSaleUnits } = e;
+
     setSelectedProduct(e);
-    setSelectedSaleUnit(
-      multipleSaleUnits?.find((item) => item?.saleUnitId === 2205)
-    );
+    const itemToEdit = route?.params;
+
     if (multipleSaleUnits) {
       setSaleUnits(multipleSaleUnits);
+
+      if (itemToEdit) {
+        const defaultUnit = multipleSaleUnits.find(
+          (unit) => unit?.saleUnitName === itemToEdit?.saleUnitName
+        );
+        setSelectedSaleUnit(defaultUnit);
+        setRemarks(itemToEdit?.remarks);
+        setSalesPrice(String(itemToEdit?.salesPrice));
+
+        if (itemToEdit?.hasMultipleSaleUnits) {
+          setSelectedSaleUnits(itemToEdit?.multipleSaleUnits);
+        }
+      } else {
+        setSelectedSaleUnit(
+          multipleSaleUnits?.find((item) => item?.saleUnitId === 2205) //if it contains Whole
+        );
+      }
     } else {
       setSaleUnits([]);
       setSelectedSaleUnits([]);
@@ -143,13 +161,40 @@ const ProductEntry = () => {
     setSaleUnits([]);
   };
 
+  const populateForm = () => {
+    if (route.params) {
+      const record = { ...route.params };
+      setEdit(true);
+      fetchProductDetails(record?.productId);
+    } else {
+      fetchManufacturers();
+    }
+  };
+
+  const fetchProductDetails = async (id) => {
+    await new BaseApiService(`/products/${id}`)
+      .getRequestWithJsonResponse()
+      .then(async (response) => {
+        setEdit(true);
+
+        const { manufacturerName, manufacturerId } = response;
+        setSelectedManufacturer({ name: manufacturerName, id: manufacturerId });
+        onProductChange(response);
+        setLoading(false);
+      })
+      .catch((error) => {
+        setLoading(false);
+        snackBarRef.current.show("Error fetching product infomation");
+      });
+  };
+
   const saveProduct = () => {
     setSubmitted(true);
     setLoading(true);
 
     let payload = {
       manufacturerId: selectedManufacturer?.id,
-      shopId: selectedShop?.id,
+      shopId: edit ? route?.params?.shopId : selectedShop?.id,
       productId: selectedProduct?.id,
       saleUnitId: selectedSaleUnit?.saleUnitId,
       salesPrice: Number(salesPrice),
@@ -158,7 +203,9 @@ const ProductEntry = () => {
       multipleSaleUnits: selectedSaleUnits,
     };
 
-    const apiUrl = "/shop-products";
+    const apiUrl = edit
+      ? `${SHOP_PRODUCTS_ENDPOINT}/${route?.params?.id}`
+      : SHOP_PRODUCTS_ENDPOINT;
 
     let isValidPayload = hasNull(payload) === false && salesPrice.trim() !== "";
 
@@ -167,13 +214,14 @@ const ProductEntry = () => {
     }
     if (isValidPayload === true) {
       new BaseApiService(apiUrl)
-        .saveRequestWithJsonResponse(payload, false)
+        .saveRequestWithJsonResponse(payload, edit)
         .then((response) => {
           clearForm();
           setLoading(false);
           setSubmitted(false);
           snackBarRef.current.show("Product saved successfully", 5000);
           setDisable(false);
+          navigation?.goBack();
         })
         .catch((error) => {
           snackBarRef.current.show(error?.message, 5000);
@@ -185,143 +233,160 @@ const ProductEntry = () => {
   };
 
   useEffect(() => {
-    fetchManufacturers();
+    populateForm();
   }, []);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.light }}>
-      <AppStatusBar />
+    <KeyboardAvoidingView
+      enabled={true}
+      behavior={"height"}
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView style={{ flex: 1, backgroundColor: Colors.light }}>
+        <AppStatusBar />
 
-      <TopHeader title="List product" />
-      <Loader loading={loading} />
-      <View
-        style={{
-          paddingHorizontal: 8,
-          gap: 8,
-          paddingBottom: 30,
-        }}
-      >
-        <Text style={styles.headerText}>Enter product details</Text>
+        <TopHeader title="List product" />
+        <Loader loading={loading} />
+        <View
+          style={{
+            paddingHorizontal: 8,
+            gap: 8,
+            paddingBottom: 30,
+          }}
+        >
+          <Text style={styles.headerText}>Enter product details</Text>
 
-        <View>
-          <Text style={styles.inputLabel}>Manufacturer</Text>
-          <MyDropDown
-            style={styles.dropDown}
-            data={manufacturers}
-            onChange={onManufacturerChange}
-            value={selectedManufacturer}
-            placeholder="Select manufacuturer"
-            labelField="name"
-            valueField="id"
-          />
-          {submitted && !selectedManufacturer && (
-            <Text style={styles.errorText}>Manufacturer is required</Text>
-          )}
-        </View>
-
-        <View>
-          <Text style={styles.inputLabel}>Product</Text>
-          <MyDropDown
-            style={styles.dropDown}
-            disable={disable}
-            data={products}
-            onChange={onProductChange}
-            value={selectedShop}
-            placeholder="Select product"
-            labelField="displayName"
-            valueField="id"
-          />
-          {submitted && !selectedProduct && (
-            <Text style={styles.errorText}>Product is required</Text>
-          )}
-        </View>
-
-        <FlatList
-          data={saleUnits?.filter(
-            (item) => item?.saleUnitName !== selectedSaleUnit?.saleUnitName
-          )}
-          ListHeaderComponent={() => (
-            <Text style={styles.inputLabel}>Container portions</Text>
-          )}
-          renderItem={({ item }) => (
-            <ChipButton
-              isSelected={selectedSaleUnits?.find(
-                (unit) => item?.saleUnitName === unit?.saleUnitName
-              )}
-              key={item.saleUnitName}
-              onPress={() => onSaleUnitSelect(item)}
-              title={item?.saleUnitName}
-              style={{ width: "fit-content" }}
-            />
-          )}
-          keyExtractor={(item) => item.saleUnitName.toString()}
-          numColumns={3}
-        />
-        <View style={styles.row}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.inputLabel}>Sale unit</Text>
+          <View>
+            <Text style={styles.inputLabel}>Manufacturer</Text>
             <MyDropDown
               style={styles.dropDown}
-              data={saleUnits}
-              onChange={handleSaleUnitChange}
-              value={selectedSaleUnit}
-              placeholder="Select sale unit"
-              labelField="saleUnitName"
+              data={edit ? [{ ...selectedManufacturer }] : manufacturers}
+              onChange={onManufacturerChange}
+              value={selectedManufacturer}
+              placeholder="Select manufacuturer"
+              labelField="name"
               valueField="id"
-              search={false}
             />
-            {submitted && !selectedSaleUnit && (
-              <Text style={styles.errorText}>Sale unit is required</Text>
+            {submitted && !selectedManufacturer && (
+              <Text style={styles.errorText}>Manufacturer is required</Text>
             )}
           </View>
 
-          <View style={{ flex: 1 }}>
-            <MyInput
-              label={<Text style={styles.inputLabel}>Sales price</Text>}
-              value={salesPrice}
-              onValueChange={(text) => setSalesPrice(text)}
-              inputMode="numeric"
+          <View>
+            <Text style={styles.inputLabel}>Product</Text>
+            <MyDropDown
+              style={styles.dropDown}
+              disable={disable}
+              data={edit ? [{ ...selectedProduct }] : products}
+              onChange={onProductChange}
+              value={selectedProduct}
+              placeholder="Select product"
+              labelField="displayName"
+              valueField="id"
             />
-
-            {submitted && salesPrice.trim() === "" && (
-              <Text style={styles.errorText}>Sales price is required</Text>
+            {submitted && !selectedProduct && (
+              <Text style={styles.errorText}>Product is required</Text>
             )}
           </View>
-        </View>
 
-        {selectedSaleUnits?.map((item, index) => (
-          <View style={styles.row} key={item?.saleUnitName}>
+          <FlatList
+            data={saleUnits?.filter(
+              (item) =>
+                item?.productSaleUnitName !==
+                  selectedSaleUnit?.productSaleUnitName ||
+                item?.saleUnitName !== selectedSaleUnit?.saleUnitName
+            )}
+            ListHeaderComponent={() =>
+              saleUnits?.length > 1 && (
+                <Text style={styles.inputLabel}>Container portions</Text>
+              )
+            }
+            renderItem={({ item }) => (
+              <ChipButton
+                isSelected={selectedSaleUnits?.find(
+                  (unit) =>
+                    item?.saleUnitName === unit?.productSaleUnitName ||
+                    item?.saleUnitName === unit?.saleUnitName
+                )}
+                key={item.saleUnitName}
+                onPress={() => onSaleUnitSelect(item)}
+                title={item?.saleUnitName}
+                style={{ width: "fit-content" }}
+              />
+            )}
+            keyExtractor={(item) => item.saleUnitName.toString()}
+            numColumns={3}
+          />
+          <View style={styles.row}>
             <View style={{ flex: 1 }}>
-              <MyInput label="" value={item?.saleUnitName} editable={false} />
+              <Text style={styles.inputLabel}>Sale unit</Text>
+              <MyDropDown
+                style={styles.dropDown}
+                data={saleUnits}
+                onChange={handleSaleUnitChange}
+                value={selectedSaleUnit}
+                placeholder="Select sale unit"
+                labelField="saleUnitName"
+                valueField="id"
+                search={false}
+              />
+              {submitted && !selectedSaleUnit && (
+                <Text style={styles.errorText}>Sale unit is required</Text>
+              )}
             </View>
+
             <View style={{ flex: 1 }}>
               <MyInput
-                label=""
-                value={item.unitPrice}
-                onValueChange={(e) => handleUnitPriceChange(index, e.value)}
+                label={<Text style={styles.inputLabel}>Selling price</Text>}
+                value={salesPrice}
+                onValueChange={(text) => setSalesPrice(text)}
+                inputMode="numeric"
               />
+
+              {submitted && salesPrice.trim() === "" && (
+                <Text style={styles.errorText}>Sales price is required</Text>
+              )}
             </View>
           </View>
-        ))}
-        <View>
-          <MyInput
-            label="Remarks"
-            value={remarks}
-            onValueChange={(text) => setRemarks(text)}
-            multiline
+
+          {selectedSaleUnits?.map((item, index) => (
+            <View style={styles.row} key={index}>
+              <View style={{ flex: 1 }}>
+                <MyInput
+                  label=""
+                  value={item.saleUnitName || item?.productSaleUnitName}
+                  editable={false}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <MyInput
+                  label=""
+                  value={item.unitPrice}
+                  onValueChange={(e) => handleUnitPriceChange(index, e)}
+                />
+              </View>
+            </View>
+          ))}
+          <View>
+            <MyInput
+              label="Remarks"
+              value={remarks}
+              onValueChange={(text) => setRemarks(text)}
+              multiline
+            />
+          </View>
+        </View>
+        <View style={styles.bottomContent}>
+          <PrimaryButton darkMode={false} title={"Clear"} onPress={clearForm} />
+          <PrimaryButton
+            title={"Save"}
+            onPress={saveProduct}
+            disabled={disable}
           />
         </View>
-      </View>
-      <View style={styles.bottomContent}>
-        <PrimaryButton darkMode={false} title={"Clear"} onPress={clearForm} />
-        <PrimaryButton
-          title={"Save"}
-          onPress={saveProduct}
-          disabled={disable}
-        />
-      </View>
-      <Snackbar ref={snackBarRef} />
-    </SafeAreaView>
+        <Snackbar ref={snackBarRef} />
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 };
 

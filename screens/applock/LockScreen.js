@@ -1,14 +1,17 @@
 import { View, Text, SafeAreaView } from "react-native";
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import Colors from "../../constants/Colors";
-import PinDot from "../../components/lockscreen/PinDot";
-import NumbersContiner from "../../components/lockscreen/NumbersContiner";
+import PinDot from "./PinDot";
+import NumbersContiner from "./NumbersContiner";
 import { TouchableOpacity } from "react-native";
 import AppStatusBar from "../../components/AppStatusBar";
 import { Image } from "react-native";
 import { UserSessionUtils } from "../../utils/UserSessionUtils";
 import { UserContext } from "../../context/UserContext";
-import { CommonActions } from "@react-navigation/native";
+import { StackActions } from "@react-navigation/native";
+import Icon from "../../components/Icon";
+import * as LocalAuthentication from "expo-local-authentication";
+import { LANDING_SCREEN } from "../../navigation/ScreenNames";
 
 const LockScreen = ({ navigation, route }) => {
   const [pinCode, setPinCode] = useState(["", "", "", "", ""]);
@@ -16,23 +19,26 @@ const LockScreen = ({ navigation, route }) => {
 
   const { userPincode } = useContext(UserContext);
 
-  const onNumberPress = (num) => {
-    setErrorText(null);
+  const onNumberPress = useCallback(
+    (num) => {
+      setErrorText(null);
 
-    let tempCode = [...pinCode];
-    for (let i = 0; i < tempCode.length; i++) {
-      if (tempCode[i] === "") {
-        tempCode[i] = String(num);
-        break;
-      } else {
-        continue;
+      let tempCode = [...pinCode];
+      for (let i = 0; i < tempCode.length; i++) {
+        if (tempCode[i] === "") {
+          tempCode[i] = String(num);
+          break;
+        } else {
+          continue;
+        }
       }
-    }
 
-    setPinCode(tempCode);
-  };
+      setPinCode(tempCode);
+    },
+    [pinCode]
+  );
 
-  const onClear = () => {
+  const onClear = useCallback(() => {
     let tempCode = [...pinCode];
     for (let x = tempCode.length - 1; x >= 0; x--) {
       if (tempCode[x] !== "") {
@@ -43,20 +49,18 @@ const LockScreen = ({ navigation, route }) => {
       }
     }
     setPinCode(tempCode);
+  }, [pinCode]);
+
+  const logTheUserIn = async () => {
+    await UserSessionUtils.setPinLoginTime(String(new Date()));
+    navigation?.dispatch(StackActions.replace(LANDING_SCREEN));
   };
 
   const authWithPin = async () => {
     const isCorrectPin = pinCode.join("") === userPincode;
 
     if (isCorrectPin) {
-      const { dispatch } = navigation;
-      await UserSessionUtils.setPinLoginTime(String(new Date()));
-      dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [{ name: "welcome" }],
-        })
-      );
+      await logTheUserIn();
       setPinCode(["", "", "", "", ""]);
     }
 
@@ -66,16 +70,49 @@ const LockScreen = ({ navigation, route }) => {
     }
   };
 
+  const handleFingerprintAuth = async () => {
+    try {
+      const isAvailable = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+      if (!isAvailable) {
+        return;
+      }
+
+      if (!isEnrolled) {
+        return;
+      }
+
+      const { success } = await LocalAuthentication.authenticateAsync({
+        promptMessage: "Unlock to use Duqact",
+      });
+
+      if (success) {
+        console.log("Authentication successful");
+        logTheUserIn();
+      } else {
+        console.log("Authentication failed");
+      }
+    } catch (error) {
+      console.error("Authentication error:", error);
+    }
+  };
+
   useEffect(() => {
     if (!pinCode.includes("")) {
       authWithPin();
     }
   }, [pinCode]);
 
+  useEffect(() => {
+    handleFingerprintAuth();
+  }, []);
+
   return (
     <SafeAreaView
       style={{
         flex: 1,
+        backgroundColor: "#000",
       }}
     >
       <AppStatusBar />
@@ -88,10 +125,10 @@ const LockScreen = ({ navigation, route }) => {
         }}
       >
         <Image
-          source={require("../../assets/icons/icon2.png")}
+          source={require("../../assets/icons/yellow_transparent.png")}
           style={{
-            height: 100,
-            width: 100,
+            height: 120,
+            width: 120,
             resizeMode: "contain",
           }}
         />
@@ -109,7 +146,7 @@ const LockScreen = ({ navigation, route }) => {
             fontSize: 22,
             letterSpacing: 0.34,
             lineHeight: 25,
-            // color: Colors.light,
+            color: Colors.light,
           }}
         >
           Enter pin code
@@ -130,7 +167,11 @@ const LockScreen = ({ navigation, route }) => {
         </View>
       </View>
 
-      <NumbersContiner onPress={onNumberPress} />
+      <NumbersContiner
+        onPress={onNumberPress}
+        fpAuth={handleFingerprintAuth}
+        showFpIcon
+      />
 
       <View
         style={{
@@ -142,26 +183,29 @@ const LockScreen = ({ navigation, route }) => {
         }}
       >
         <View>
-          <Text>Forgot pin?</Text>
+          <Text style={{ color: Colors.light }}>Forgot pin?</Text>
         </View>
         <TouchableOpacity
+          activeOpacity={0.7}
           onPress={onClear}
           style={{ justifyContent: "center" }}
         >
-          <Image
-            source={require("../../assets/icons/icons8-chevron-left-30.png")}
-            style={{
-              height: 20,
-              width: 20,
-              resizeMode: "contain",
-            }}
+          <Icon
+            name="delete"
+            groupName="Feather"
+            color={Colors.light}
+            size={25}
           />
         </TouchableOpacity>
       </View>
 
       <View style={{ marginTop: 20 }}>
         {errorText && (
-          <Text style={{ alignSelf: "center", fontSize: 16 }}>{errorText}</Text>
+          <Text
+            style={{ alignSelf: "center", fontSize: 16, color: Colors.error }}
+          >
+            {errorText}
+          </Text>
         )}
       </View>
     </SafeAreaView>

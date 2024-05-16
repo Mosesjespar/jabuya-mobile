@@ -8,16 +8,22 @@ import Colors from "../../constants/Colors";
 import AppStatusBar from "../../components/AppStatusBar";
 import {
   convertDateFormat,
+  formatDate,
   formatNumberWithCommas,
   getCurrentDay,
 } from "../../utils/Utils";
 import UserProfile from "../../components/UserProfile";
 import { UserContext } from "../../context/UserContext";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { SaleTransactionItem } from "./components/SaleTransactionItem";
 import ItemHeader from "./components/ItemHeader";
 import VerticalSeparator from "../../components/VerticalSeparator";
-import { SHOP_SUMMARY } from "../../navigation/ScreenNames";
+import {
+  INCOME_GRAPHS,
+  OFFLINE_SALES,
+  SHOP_SUMMARY,
+} from "../../navigation/ScreenNames";
+import SaleTxnCard from "./components/SaleTxnCard";
+import { UserSessionUtils } from "../../utils/UserSessionUtils";
 
 export default function ViewSales({ navigation }) {
   const [sales, setSales] = useState([]);
@@ -31,29 +37,42 @@ export default function ViewSales({ navigation }) {
   const [daysCapital, setDaysCapital] = useState(0);
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [offlineSales, setOfflineSales] = useState(false);
 
-  const { userParams, shops, selectedShop, setSelectedShop } =
-    useContext(UserContext);
+  const { userParams, selectedShop } = useContext(UserContext);
 
   const { isShopOwner, shopOwnerId } = userParams;
+
+  const unsavedSales = async () => {
+    let list = await UserSessionUtils.getPendingSales();
+    setOfflineSales(list?.length > 0);
+  };
 
   const menuItems = [
     {
       name: "Select date",
       onClick: () => setVisible(true),
     },
-    isShopOwner && {
-      name: "Investment",
-      onClick: () => navigation.navigate(SHOP_SUMMARY),
-    },
-    ...(shops?.length > 1
-      ? shops?.map((shop) => {
-          return {
-            ...shop,
-            onClick: () => setSelectedShop(shop),
-            bold: shop?.id === selectedShop.id,
-          };
-        })
+
+    ...(offlineSales === true
+      ? [
+          {
+            name: "Offline sales",
+            onClick: () => navigation.navigate(OFFLINE_SALES),
+          },
+        ]
+      : []),
+    ...(isShopOwner === true
+      ? [
+          // {
+          //   name: "Income graphs",
+          //   onClick: () => navigation.navigate(INCOME_GRAPHS),
+          // },
+          {
+            name: "Investment",
+            onClick: () => navigation.navigate(SHOP_SUMMARY),
+          },
+        ]
       : []),
   ];
 
@@ -87,14 +106,15 @@ export default function ViewSales({ navigation }) {
     let searchParameters = {
       offset: 0,
       limit: 0,
-      ...(allShops && {
-        shopOwnerId: selectedShop?.id,
-      }),
+      ...(allShops &&
+        isShopOwner && {
+          shopOwnerId: selectedShop?.id,
+        }),
       ...(!allShops && { shopId: selectedShop?.id }),
       startDate: getCurrentDay(),
       ...(day && {
         startDate: convertDateFormat(day),
-        endDate: convertDateFormat(day, true),
+        endDate: convertDateFormat(day),
       }),
     };
 
@@ -110,7 +130,7 @@ export default function ViewSales({ navigation }) {
         let sV = data.reduce((a, sale) => a + sale?.totalCost, 0); //sales value
 
         if (response.totalItems === 0) {
-          setMessage("No sales made on this today");
+          setMessage(`No sales made on this today for ${selectedShop?.name}`);
         }
 
         data.forEach((item) => {
@@ -150,6 +170,7 @@ export default function ViewSales({ navigation }) {
 
   useEffect(() => {
     getSales();
+    unsavedSales();
   }, [selectedShop]);
 
   return (
@@ -157,7 +178,12 @@ export default function ViewSales({ navigation }) {
       <AppStatusBar />
 
       <View style={{ backgroundColor: Colors.dark }}>
-        <UserProfile renderNtnIcon={false} renderMenu menuItems={menuItems} />
+        <UserProfile
+          renderNtnIcon={false}
+          renderMenu
+          menuItems={menuItems}
+          showShops
+        />
 
         <View style={{ marginTop: 5, paddingBottom: 10 }}>
           <View
@@ -177,15 +203,15 @@ export default function ViewSales({ navigation }) {
             >
               Sales summary
             </Text>
-
             <Text
               style={{
                 color: Colors.primary,
+                fontSize: 13,
                 fontWeight: 600,
-                opacity: 0.7,
+                alignSelf: "flex-end",
               }}
             >
-              {selectedShop?.name}
+              {formatDate(date, true)}
             </Text>
           </View>
 
@@ -223,7 +249,7 @@ export default function ViewSales({ navigation }) {
         data={sales}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item, i }) => (
-          <SaleTransactionItem key={i} data={item} isShopOwner={isShopOwner} />
+          <SaleTxnCard key={i} data={item} isShopOwner={isShopOwner} />
         )}
         ListEmptyComponent={() => (
           <Text style={{ flex: 1, textAlign: "center", alignSelf: "center" }}>

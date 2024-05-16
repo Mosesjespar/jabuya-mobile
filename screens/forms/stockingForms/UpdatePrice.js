@@ -1,24 +1,20 @@
-import { View, Text, SafeAreaView, StyleSheet, Animated } from "react-native";
+import { View, Text, SafeAreaView, StyleSheet } from "react-native";
 import React, { useContext, useState, useEffect, useRef } from "react";
 import TopHeader from "../../../components/TopHeader";
 import AppStatusBar from "../../../components/AppStatusBar";
 import { BaseStyle } from "../../../utils/BaseStyle";
-import ChipButton from "../../../components/buttons/ChipButton";
 import { UserContext } from "../../../context/UserContext";
 import Colors from "../../../constants/Colors";
 import MyInput from "../../../components/MyInput";
 import Loader from "../../../components/Loader";
 import DataRow from "../../../components/cardComponents/DataRow";
-import {
-  formatNumberWithCommas,
-  hasNull,
-  isValidNumber,
-} from "../../../utils/Utils";
+import { formatNumberWithCommas, isValidNumber } from "../../../utils/Utils";
 import { SHOP_PRODUCTS_ENDPOINT } from "../../../utils/EndPointUtils";
 import { BaseApiService } from "../../../utils/BaseApiService";
 import Snackbar from "../../../components/Snackbar";
 import { StackActions } from "@react-navigation/native";
 import { LANDING_SCREEN } from "../../../navigation/ScreenNames";
+import PrimaryButton from "../../../components/buttons/PrimaryButton";
 
 const UpdatePrice = ({ navigation, route }) => {
   const [dob, setDOB] = useState(new Date());
@@ -43,6 +39,7 @@ const UpdatePrice = ({ navigation, route }) => {
         setSelectedSaleUnits(selectedRecord?.multipleSaleUnits);
       }
       setSelectedProduct(selectedRecord);
+      setPrice(String(selectedRecord?.salesPrice));
       setLoading(false);
     }
   };
@@ -91,14 +88,14 @@ const UpdatePrice = ({ navigation, route }) => {
   }, []);
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.light }}>
       <AppStatusBar />
 
-      <TopHeader title="Update " />
+      <TopHeader title="Update price" />
       <Snackbar ref={snackBarRef} />
 
       <Loader loading={loading} />
-      <View style={BaseStyle.shadowedContainer}>
+      <View style={BaseStyle.container}>
         <Text
           style={{
             marginTop: 10,
@@ -148,6 +145,7 @@ const UpdatePrice = ({ navigation, route }) => {
               inputMode="numeric"
               value={price}
               onValueChange={(text) => setPrice(text)}
+              style={{ flex: 1 }}
             />
           </View>
           <MyInput
@@ -155,6 +153,7 @@ const UpdatePrice = ({ navigation, route }) => {
             dateValue={dob}
             isDateInput
             onDateChange={(date) => setDOB(date)}
+            style={{ flex: 1 }}
           />
         </View>
 
@@ -166,9 +165,19 @@ const UpdatePrice = ({ navigation, route }) => {
           onValueChange={(text) => setRemarks(text)}
         />
 
-        <View style={styles.btnContainer}>
-          <ChipButton title={"Cancel"} onPress={() => navigation.goBack()} />
-          <ChipButton darkMode title={"Confirm"} onPress={saveProduct} />
+        <View
+          style={{
+            marginTop: 15,
+            flexDirection: "row",
+            gap: 10,
+          }}
+        >
+          <PrimaryButton
+            darkMode={false}
+            title={"Cancel"}
+            onPress={() => navigation.goBack()}
+          />
+          <PrimaryButton title={"Save"} onPress={saveProduct} />
         </View>
       </View>
     </SafeAreaView>

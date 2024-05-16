@@ -1,14 +1,14 @@
 import { View, Text, SafeAreaView } from "react-native";
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import Colors from "../../constants/Colors";
-import PinDot from "../../components/lockscreen/PinDot";
-import NumbersContiner from "../../components/lockscreen/NumbersContiner";
+import PinDot from "./PinDot";
+import NumbersContiner from "./NumbersContiner";
 import { TouchableOpacity } from "react-native";
 import AppStatusBar from "../../components/AppStatusBar";
-import { Image } from "react-native";
 import { UserSessionUtils } from "../../utils/UserSessionUtils";
 import { UserContext } from "../../context/UserContext";
 import PrimaryButton from "../../components/buttons/PrimaryButton";
+import Icon from "../../components/Icon";
 
 const LockSetUp = ({ navigation, route }) => {
   const [pinCode, setPinCode] = useState(["", "", "", "", ""]);
@@ -22,25 +22,28 @@ const LockSetUp = ({ navigation, route }) => {
   const { hasUserSetPinCode, setHasUserSetPinCode, setLoginWithPin } =
     useContext(UserContext);
 
-  const onNumberPress = (num) => {
-    let tempCode = [...pinCode];
-    setErrorText(null);
-    for (let i = 0; i < tempCode.length; i++) {
-      if (tempCode[i] === "") {
-        tempCode[i] = String(num);
-        break;
-      } else {
-        continue;
+  const onNumberPress = useCallback(
+    (num) => {
+      let tempCode = [...pinCode];
+      setErrorText(null);
+      for (let i = 0; i < tempCode.length; i++) {
+        if (tempCode[i] === "") {
+          tempCode[i] = String(num);
+          break;
+        } else {
+          continue;
+        }
       }
-    }
 
-    setPinCode(tempCode);
+      setPinCode(tempCode);
 
-    if (!hasUserSetPinCode) {
-    }
-  };
+      if (!hasUserSetPinCode) {
+      }
+    },
+    [pinCode]
+  );
 
-  const onClear = () => {
+  const onClear = useCallback(() => {
     let tempCode = [...pinCode];
     for (let x = tempCode.length - 1; x >= 0; x--) {
       if (tempCode[x] !== "") {
@@ -51,7 +54,7 @@ const LockSetUp = ({ navigation, route }) => {
       }
     }
     setPinCode(tempCode);
-  };
+  }, [pinCode]);
 
   const onConfirmPin = () => {
     // setErrorText(null);
@@ -89,6 +92,7 @@ const LockSetUp = ({ navigation, route }) => {
     <SafeAreaView
       style={{
         flex: 1,
+        backgroundColor: Colors.dark,
       }}
     >
       <AppStatusBar />
@@ -96,7 +100,7 @@ const LockSetUp = ({ navigation, route }) => {
       <View
         style={{
           alignItems: "center",
-          height: 170, //100 if logo
+          height: 170,
           justifyContent: "center",
         }}
       >
@@ -105,7 +109,7 @@ const LockSetUp = ({ navigation, route }) => {
             fontSize: 22,
             letterSpacing: 0.34,
             lineHeight: 25,
-            // color: Colors.light,
+            color: Colors.light,
           }}
         >
           {lockText}
@@ -136,8 +140,17 @@ const LockSetUp = ({ navigation, route }) => {
         }}
       >
         <View></View>
-        <TouchableOpacity onPress={onClear}>
-          <Text style={{}}>Clear</Text>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={onClear}
+          style={{ justifyContent: "center" }}
+        >
+          <Icon
+            name="delete"
+            groupName="Feather"
+            color={Colors.light}
+            size={25}
+          />
         </TouchableOpacity>
       </View>
 
@@ -149,7 +162,11 @@ const LockSetUp = ({ navigation, route }) => {
         />
       )}
       <View>
-        {errorText && <Text style={{ alignSelf: "center" }}>{errorText}</Text>}
+        {errorText && (
+          <Text style={{ alignSelf: "center", color: Colors.error }}>
+            {errorText}
+          </Text>
+        )}
       </View>
     </SafeAreaView>
   );

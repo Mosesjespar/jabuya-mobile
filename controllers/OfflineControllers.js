@@ -9,8 +9,6 @@ import { UserSessionUtils } from "../utils/UserSessionUtils";
 export const resolveUnsavedSales = async () => {
   let pendingSales = await UserSessionUtils.getPendingSales();
 
-  let savedSaves = 0;
-
   if (pendingSales.length > 0) {
     pendingSales.forEach(async (cart, index) => {
       await new BaseApiService(SHOP_SALES_ENDPOINT)
@@ -29,7 +27,6 @@ export const resolveUnsavedSales = async () => {
               .then((d) => d.json())
               .then(async (d) => {
                 await UserSessionUtils.removePendingSale(index);
-                savedSaves += 1;
               })
               .catch((error) => {});
           } else {
@@ -37,8 +34,6 @@ export const resolveUnsavedSales = async () => {
         })
         .catch((error) => {});
     });
-
-    return savedSaves === pendingSales.length;
   }
 };
 
@@ -97,4 +92,20 @@ export const saveShopClients = async (params, refresh = false) => {
   }
 
   return saved;
+};
+
+export const saveShopDetails = async (isShopOwner, shopOwnerId) => {
+  const searchParameters = {
+    limit: 0,
+    offset: 0,
+    ...(isShopOwner === true && { shopOwnerId: shopOwnerId }),
+  };
+
+  await new BaseApiService("/shops")
+    .getRequestWithJsonResponse(searchParameters)
+    .then(async (response) => {
+      await UserSessionUtils.setShopCount(String(response.totalItems));
+      await UserSessionUtils.setShops(response.records);
+    })
+    .catch((error) => {});
 };

@@ -1,5 +1,5 @@
 import { View, Text, Image } from "react-native";
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useState } from "react";
 import AppStatusBar from "../../components/AppStatusBar";
 import TopHeader from "../../components/TopHeader";
 import { SafeAreaView } from "react-native";
@@ -10,24 +10,31 @@ import { UserContext } from "../../context/UserContext";
 import DisplayMessage from "../../components/Dialogs/DisplayMessage";
 import { UserSessionUtils } from "../../utils/UserSessionUtils";
 import { LOCK_SETuP } from "../../navigation/ScreenNames";
-import UserProfile from "../../components/UserProfile";
 import { BaseStyle } from "../../utils/BaseStyle";
 import { Switch } from "react-native-paper";
 
 const Settings = ({ navigation }) => {
-  const { hasUserSetPinCode, sessionObj, logInWithPin, setLoginWithPin } =
-    useContext(UserContext);
+  const {
+    hasUserSetPinCode,
+    sessionObj,
+    logInWithPin,
+    setLoginWithPin,
+    getAppLockStatus,
+  } = useContext(UserContext);
 
   const [showMoodal, setShowModal] = useState(false);
   const [message, setMessage] = useState("");
   const [agreeText, setAgreeText] = useState("");
   const [canCancel, setCanCancel] = useState(false);
 
-  const onToggleSwitch = () => {
+  const onToggleSwitch = async () => {
     setLoginWithPin(!logInWithPin);
 
     if (hasUserSetPinCode === false) {
       navigation.navigate(LOCK_SETuP);
+    } else {
+      await UserSessionUtils.removeUserPinCode();
+      await getAppLockStatus();
     }
   };
   const { role, fullName } = sessionObj;
@@ -95,7 +102,7 @@ const Settings = ({ navigation }) => {
       <View style={{ paddingHorizontal: 10 }}>
         <View style={{ marginTop: 20 }}>
           <Text style={{ fontSize: 16 }}>Personal</Text>
-          <View style={BaseStyle.shadowedContainer}>
+          <View style={BaseStyle.container}>
             <SettingsBar
               icon={require("../../assets/icons/icons8-font-size-60.png")}
               text="Text font size"
@@ -115,11 +122,11 @@ const Settings = ({ navigation }) => {
 
         <View style={{ marginTop: 20 }}>
           <Text style={{ fontSize: 16 }}>Security and Mangement</Text>
-          <View style={BaseStyle.shadowedContainer}>
-            <SettingsBar
+          <View style={BaseStyle.container}>
+            {/* <SettingsBar
               icon={require("../../assets/icons/icons8-shield-50.png")}
               text="Password"
-            />
+            /> */}
 
             <SettingsBar
               icon={require("../../assets/icons/icons8-shield-50.png")}
@@ -129,6 +136,7 @@ const Settings = ({ navigation }) => {
                   style={{ height: 20 }}
                   value={logInWithPin}
                   onValueChange={onToggleSwitch}
+                  color="#000"
                 />
               )}
             />
@@ -152,8 +160,12 @@ const Settings = ({ navigation }) => {
           textColor={Colors.primary}
           textStyle={{ fontSize: 17 }}
           style={[
-            BaseStyle.shadowedContainer,
-            { backgroundColor: Colors.dark, paddingVertical: 7 },
+            BaseStyle.container,
+            {
+              backgroundColor: Colors.dark,
+              paddingVertical: 7,
+              borderRadius: 8,
+            },
           ]}
         />
       </View>
