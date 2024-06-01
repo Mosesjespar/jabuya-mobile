@@ -1,6 +1,5 @@
 import { View, Text } from "react-native";
-import React, { memo } from "react";
-import RenderCurrency from "../RenderCurrency";
+import React from "react";
 
 const DataRow = ({
   label,
@@ -23,7 +22,7 @@ const DataRow = ({
         style,
       ]}
     >
-      <Text style={[{ fontWeight: 600, fontSize: 14 }, labelTextStyle]}>
+      <Text style={[{ fontWeight: 400, fontSize: 14 }, labelTextStyle]}>
         {label}
       </Text>
       <Text style={[{ fontWeight: 600, fontSize: 14 }, valueTextStyle]}>
@@ -42,4 +41,4 @@ const DataRow = ({
   );
 };
 
-export default memo(DataRow);
+export default DataRow;

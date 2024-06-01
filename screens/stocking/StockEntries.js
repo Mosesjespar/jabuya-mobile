@@ -1,17 +1,18 @@
 import { View, Text, FlatList } from "react-native";
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import TopHeader from "../../components/TopHeader";
 import AppStatusBar from "../../components/AppStatusBar";
 import Colors from "../../constants/Colors";
-import { UserContext } from "../../context/UserContext";
+import { userData } from "../../context/UserContext";
 import { BaseApiService } from "../../utils/BaseApiService";
 import { MAXIMUM_RECORDS_PER_FETCH } from "../../constants/Constants";
 import Snackbar from "../../components/Snackbar";
-import StockPurchaseCard from "./components/StockPurchaseCard";
+import StockEntryCard from "./components/StockEntryCard";
 import { STOCK_ENTRY_FORM } from "../../navigation/ScreenNames";
 import { STOCK_ENTRY_ENDPOINT } from "../../utils/EndPointUtils";
+import { saveShopProductsOnDevice } from "../../controllers/OfflineControllers";
 
-const StockPurchase = ({ navigation }) => {
+const StockEntries = ({ navigation }) => {
   const [stockEntries, setStockEntries] = useState([]);
   const [stockEntryRecords, setStockEntryRecords] = useState(0);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
@@ -22,23 +23,16 @@ const StockPurchase = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const snackbarRef = useRef(null);
 
-  const { selectedShop, userParams } = useContext(UserContext);
-  const { isShopOwner, shopOwnerId } = userParams;
+  const { selectedShop, filterParams, offlineParams } = userData();
 
   const fetchStockEntries = async (offsetToUse = 0) => {
     try {
       setMessage(null);
       setLoading(true);
 
-      const allShops = selectedShop?.id === shopOwnerId;
-
       const searchParameters = {
         limit: MAXIMUM_RECORDS_PER_FETCH,
-        ...(allShops &&
-          isShopOwner && {
-            shopOwnerId: selectedShop?.id,
-          }),
-        ...(!allShops && { shopId: selectedShop?.id }),
+        ...filterParams(),
         offset: offsetToUse,
         ...(searchTerm &&
           searchTerm.trim() !== "" && { searchTerm: searchTerm }),
@@ -96,6 +90,10 @@ const StockPurchase = ({ navigation }) => {
     fetchStockEntries();
   }, [selectedShop]);
 
+  useEffect(() => {
+    saveShopProductsOnDevice(offlineParams, true);
+  }, []);
+
   const menuItems = [
     {
       name: "Add purchase",
@@ -123,7 +121,7 @@ const StockPurchase = ({ navigation }) => {
         style={{ marginTop: 5 }}
         keyExtractor={(item) => item.id.toString()}
         data={stockEntries}
-        renderItem={({ item }) => <StockPurchaseCard data={item} />}
+        renderItem={({ item }) => <StockEntryCard data={item} />}
         onRefresh={() => onSearch()}
         refreshing={loading}
         ListEmptyComponent={() => (
@@ -142,4 +140,4 @@ const StockPurchase = ({ navigation }) => {
   );
 };
 
-export default StockPurchase;
+export default StockEntries;

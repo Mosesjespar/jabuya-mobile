@@ -1,18 +1,16 @@
 import { View, Text, SafeAreaView, FlatList, StyleSheet } from "react-native";
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigation } from "@react-navigation/native";
-import { UserContext } from "../../context/UserContext";
-import { formatNumberWithCommas } from "../../utils/Utils";
+import { userData } from "../../context/UserContext";
 import AppStatusBar from "../../components/AppStatusBar";
 import TopHeader from "../../components/TopHeader";
 import ItemHeader from "../sales/components/ItemHeader";
 import VerticalSeparator from "../../components/VerticalSeparator";
 import Snackbar from "../../components/Snackbar";
 import Colors from "../../constants/Colors";
-import { BaseApiService } from "../../utils/BaseApiService";
 import CreditSaleCard from "./components/CreditSaleCard";
 import { CLIENT_FORM } from "../../navigation/ScreenNames";
-import { CLIENTS_ENDPOINT } from "../../utils/EndPointUtils";
+import { UserSessionUtils } from "../../utils/UserSessionUtils";
 
 const CreditSales = () => {
   const navigation = useNavigation();
@@ -28,9 +26,10 @@ const CreditSales = () => {
   const [adds, setAdds] = useState(0);
 
   const snackbarRef = useRef(null);
-  const { selectedShop, userParams } = useContext(UserContext);
+  const { selectedShop, userParams } = userData();
 
   const fetchClients = async () => {
+    const { name, id } = selectedShop;
     setMessage(null);
     setLoading(true);
     setBal(0);
@@ -38,24 +37,13 @@ const CreditSales = () => {
     setPaid(0);
     setClients([]);
     setAdds(0);
-    const allShops = selectedShop?.id === userParams?.shopOwnerId;
 
-    const serachParams = {
-      limit: 0,
-      ...(allShops &&
-        userParams?.isShopOwner && {
-          shopOwnerId: selectedShop?.id,
-        }),
-      ...(!allShops && { shopId: selectedShop?.id }),
-      offset: 0,
-    };
-
-    await new BaseApiService(CLIENTS_ENDPOINT)
-      .getRequestWithJsonResponse(serachParams)
+    await UserSessionUtils.getShopClients(name?.includes("All") ? null : id)
       .then((response) => {
-        setClients(response?.records);
-        if (response?.totalItems === 0) {
+        setClients(response);
+        if (response.length === 0) {
           setMessage("No records found");
+          setLoading(false);
         }
       })
       .catch((error) => {
@@ -83,6 +71,12 @@ const CreditSales = () => {
   useEffect(() => {
     fetchClients();
   }, [selectedShop]);
+
+  useEffect(() => {
+    if (clients?.length === adds && clients.length > 0) {
+      setLoading(false);
+    }
+  }, [adds]);
 
   const menuItems = [
     ...(userParams?.isShopOwner === true
@@ -117,19 +111,19 @@ const CreditSales = () => {
         </View>
 
         <View style={styles.summaryContainer}>
-          <ItemHeader value={clients?.length} title="Debtors" ugx={false} />
+          <ItemHeader value={clients?.length} title="Debtors" />
 
           <VerticalSeparator />
 
-          <ItemHeader title="Debt" value={formatNumberWithCommas(debt)} />
+          <ItemHeader title="Debt" value={debt} isCurrency />
 
           <VerticalSeparator />
 
-          <ItemHeader title="Paid " value={formatNumberWithCommas(paid)} />
+          <ItemHeader title="Paid " value={paid} isCurrency />
 
           <VerticalSeparator />
 
-          <ItemHeader title="Balance" value={formatNumberWithCommas(bal)} />
+          <ItemHeader title="Balance" value={bal} isCurrency />
         </View>
       </View>
 
@@ -138,9 +132,6 @@ const CreditSales = () => {
           style={{ marginTop: 10 }}
           data={clients}
           renderItem={({ item }) => {
-            if (clients?.length === adds) {
-              setLoading(false);
-            }
             return (
               <CreditSaleCard
                 client={item}

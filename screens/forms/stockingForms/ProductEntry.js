@@ -6,8 +6,7 @@ import { MyDropDown } from "../../../components/DropdownComponents";
 import { BaseApiService } from "../../../utils/BaseApiService";
 import Loader from "../../../components/Loader";
 import { hasNull } from "../../..//utils/Utils";
-import { UserContext } from "../../../context/UserContext";
-import { useContext } from "react";
+import { userData } from "../../../context/UserContext";
 import TopHeader from "../../../components/TopHeader";
 import Snackbar from "../../../components/Snackbar";
 import PrimaryButton from "../../../components/buttons/PrimaryButton";
@@ -17,9 +16,10 @@ import MyInput from "../../../components/MyInput";
 import ChipButton from "../../../components/buttons/ChipButton";
 import { FlatList } from "react-native";
 import { SHOP_PRODUCTS_ENDPOINT } from "../../../utils/EndPointUtils";
+import { saveShopProductsOnDevice } from "../../../controllers/OfflineControllers";
 
 const ProductEntry = ({ navigation, route }) => {
-  const { selectedShop } = useContext(UserContext);
+  const { selectedShop, offlineParams, shops, setSelectedShop } = userData();
 
   const [edit, setEdit] = useState(false);
   const [manufacturers, setManufacturers] = useState([]);
@@ -215,13 +215,13 @@ const ProductEntry = ({ navigation, route }) => {
     if (isValidPayload === true) {
       new BaseApiService(apiUrl)
         .saveRequestWithJsonResponse(payload, edit)
-        .then((response) => {
+        .then(async (response) => {
+          await saveShopProductsOnDevice(offlineParams, true);
           clearForm();
           setLoading(false);
           setSubmitted(false);
           snackBarRef.current.show("Product saved successfully", 5000);
           setDisable(false);
-          navigation?.goBack();
         })
         .catch((error) => {
           snackBarRef.current.show(error?.message, 5000);
@@ -237,12 +237,12 @@ const ProductEntry = ({ navigation, route }) => {
   }, []);
 
   return (
-    <KeyboardAvoidingView
-      enabled={true}
-      behavior={"height"}
-      style={{ flex: 1 }}
-    >
-      <SafeAreaView style={{ flex: 1, backgroundColor: Colors.light }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.light }}>
+      <KeyboardAvoidingView
+        enabled={true}
+        behavior={"height"}
+        style={{ flex: 1 }}
+      >
         <AppStatusBar />
 
         <TopHeader title="List product" />
@@ -255,6 +255,27 @@ const ProductEntry = ({ navigation, route }) => {
           }}
         >
           <Text style={styles.headerText}>Enter product details</Text>
+
+          {!edit && (
+            <View style={{ gap: 5 }}>
+              <Text>Shop</Text>
+              <MyDropDown
+                search={false}
+                style={{
+                  backgroundColor: Colors.light,
+                  borderColor: Colors.dark,
+                }}
+                data={shops?.filter((shop) => !shop?.name?.includes("All"))}
+                value={selectedShop}
+                onChange={(e) => {
+                  setSelectedShop(e);
+                }}
+                placeholder="Select Shop"
+                labelField="name"
+                valueField="id"
+              />
+            </View>
+          )}
 
           <View>
             <Text style={styles.inputLabel}>Manufacturer</Text>
@@ -385,8 +406,8 @@ const ProductEntry = ({ navigation, route }) => {
           />
         </View>
         <Snackbar ref={snackBarRef} />
-      </SafeAreaView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 

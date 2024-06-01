@@ -9,11 +9,10 @@ import AppStatusBar from "../../components/AppStatusBar";
 import {
   convertDateFormat,
   formatDate,
-  formatNumberWithCommas,
   getCurrentDay,
 } from "../../utils/Utils";
 import UserProfile from "../../components/UserProfile";
-import { UserContext } from "../../context/UserContext";
+import { UserContext, userData } from "../../context/UserContext";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import ItemHeader from "./components/ItemHeader";
 import VerticalSeparator from "../../components/VerticalSeparator";
@@ -39,9 +38,9 @@ export default function ViewSales({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [offlineSales, setOfflineSales] = useState(false);
 
-  const { userParams, selectedShop } = useContext(UserContext);
+  const { userParams, selectedShop, filterParams } = userData();
 
-  const { isShopOwner, shopOwnerId } = userParams;
+  const { isShopOwner } = userParams;
 
   const unsavedSales = async () => {
     let list = await UserSessionUtils.getPendingSales();
@@ -101,16 +100,11 @@ export default function ViewSales({ navigation }) {
   const getSales = async (day = null) => {
     setLoading(true);
     setMessage(null);
-    const allShops = selectedShop?.id === shopOwnerId;
 
     let searchParameters = {
       offset: 0,
       limit: 0,
-      ...(allShops &&
-        isShopOwner && {
-          shopOwnerId: selectedShop?.id,
-        }),
-      ...(!allShops && { shopId: selectedShop?.id }),
+      ...filterParams(),
       startDate: getCurrentDay(),
       ...(day && {
         startDate: convertDateFormat(day),
@@ -130,7 +124,7 @@ export default function ViewSales({ navigation }) {
         let sV = data.reduce((a, sale) => a + sale?.totalCost, 0); //sales value
 
         if (response.totalItems === 0) {
-          setMessage(`No sales made on this today for ${selectedShop?.name}`);
+          setMessage(`No sales made on this day for ${selectedShop?.name}`);
         }
 
         data.forEach((item) => {
@@ -152,8 +146,8 @@ export default function ViewSales({ navigation }) {
         let income = profits.reduce((a, b) => a + b, 0); //getting the sum profit in all carts
         let capital = saleCapital.reduce((a, b) => a + b, 0);
 
-        setDaysProfit(formatNumberWithCommas(Math.round(income)));
-        setDaysCapital(formatNumberWithCommas(Math.round(capital)));
+        setDaysProfit(Math.round(income));
+        setDaysCapital(Math.round(capital));
         setSalesValue(sV);
         setSales(response?.records);
         setLoading(false);
@@ -223,22 +217,19 @@ export default function ViewSales({ navigation }) {
               paddingHorizontal: 12,
             }}
           >
-            <ItemHeader value={totalSalesQty || 0} title="Qty" ugx={false} />
+            <ItemHeader value={totalSalesQty || 0} title="Qty" />
 
             <VerticalSeparator />
 
-            <ItemHeader
-              title="Sales"
-              value={formatNumberWithCommas(salesValue)}
-            />
+            <ItemHeader title="Sales" value={salesValue} isCurrency />
 
             <VerticalSeparator />
 
-            <ItemHeader title="Capital " value={daysCapital} />
+            <ItemHeader title="Capital " value={daysCapital} isCurrency />
 
             <VerticalSeparator />
 
-            <ItemHeader title="Income" value={daysProfit} />
+            <ItemHeader title="Income" value={daysProfit} isCurrency />
           </View>
         </View>
       </View>

@@ -1,12 +1,12 @@
-import { memo, useCallback, useContext, useEffect, useState } from "react";
-import { Text, View, StyleSheet } from "react-native";
+import { useCallback, useContext, useEffect, useState } from "react";
+import { View, StyleSheet } from "react-native";
 import { formatDate, formatNumberWithCommas } from "../../../utils/Utils";
-import CardHeader from "../../../components/cardComponents/CardHeader";
+import CardHeader from "../../../components/card_components/CardHeader";
 import SalesTable from "../../sales_desk/components/SalesTable";
-import DataRow from "../../../components/cardComponents/DataRow";
-import CardFooter2 from "../../../components/cardComponents/CardFooter2";
+import DataRow from "../../../components/card_components/DataRow";
+import CardFooter2 from "../../../components/card_components/CardFooter2";
 import { UserContext } from "../../../context/UserContext";
-import CardFooter1 from "../../../components/cardComponents/CardFooter1";
+import CardFooter1 from "../../../components/card_components/CardFooter1";
 
 function OfflineSaleTxnCard({ data, onRemove }) {
   const { lineItems, soldOnDate, onCredit, shopId } = data;
@@ -19,7 +19,7 @@ function OfflineSaleTxnCard({ data, onRemove }) {
     setExpanded(!expanded);
   }, [expanded]);
 
-  const shopName = shops?.find((s) => s?.id === shopId)?.name;
+  const shopName = shops?.find((shop) => shop?.id === shopId)?.name;
   return (
     <View style={[styles.container, { borderWidth: onCredit ? 1 : 0 }]}>
       <CardHeader
@@ -45,7 +45,7 @@ function OfflineSaleTxnCard({ data, onRemove }) {
   );
 }
 
-export default memo(OfflineSaleTxnCard);
+export default OfflineSaleTxnCard;
 
 export const TxnCashSummary = ({ data }) => {
   const { lineItems, amountPaid } = data;

@@ -1,17 +1,25 @@
 import { View, StyleSheet } from "react-native";
 import React, { memo, useCallback, useEffect, useState } from "react";
-import CardHeader from "../../../components/cardComponents/CardHeader";
+import CardHeader from "../../../components/card_components/CardHeader";
 import { formatDate, formatNumberWithCommas } from "../../../utils/Utils";
 import { useNavigation } from "@react-navigation/native";
 import { BaseApiService } from "../../../utils/BaseApiService";
-import CardFooter2 from "../../../components/cardComponents/CardFooter2";
+import CardFooter2 from "../../../components/card_components/CardFooter2";
 import { SHOP_SALES_ENDPOINT } from "../../../utils/EndPointUtils";
 import SalesTable from "../../sales_desk/components/SalesTable";
-import DataRow from "../../../components/cardComponents/DataRow";
-import CardFooter1 from "../../../components/cardComponents/CardFooter1";
+import DataRow from "../../../components/card_components/DataRow";
+import CardFooter1 from "../../../components/card_components/CardFooter1";
 import { CREDIT_PAYMENTS } from "../../../navigation/ScreenNames";
+import Icon from "../../../components/Icon";
+import { Text } from "react-native";
+import Colors from "../../../constants/Colors";
 
-const ClientDebtsCard = ({ debt, snackbarRef }) => {
+const ClientDebtsCard = ({
+  debt,
+  snackbarRef,
+  removeLoader,
+  lastItem = false,
+}) => {
   const navigation = useNavigation();
 
   const [items, setItems] = useState([]);
@@ -21,18 +29,38 @@ const ClientDebtsCard = ({ debt, snackbarRef }) => {
     setExpanded(!expanded);
   }, [expanded]);
 
-  const isFullyPaid = debt?.amountLoaned - debt?.amountRepaid <= 0;
+  const isFullyPaid = Math.abs(debt?.amountLoaned - debt?.amountRepaid) <= 0;
 
   const fetchLineItems = async () => {
     await new BaseApiService(`${SHOP_SALES_ENDPOINT}/${debt?.sale?.id}`)
       .getRequestWithJsonResponse()
       .then((response) => {
         setItems(response?.lineItems);
+
+        if (lastItem === true) {
+          removeLoader();
+        }
       })
       .catch((error) => {
         console.log(error);
       });
   };
+
+  const renderLeft = useCallback(() => {
+    if (isFullyPaid) {
+      return (
+        <View style={{ flexDirection: "row", gap: 5, alignItems: "center" }}>
+          <Icon
+            name="checkcircleo"
+            groupName="AntDesign"
+            color={Colors.green}
+          />
+
+          <Text style={{ color: Colors.green }}>Cleared</Text>
+        </View>
+      );
+    }
+  }, [isFullyPaid]);
 
   useEffect(() => {
     fetchLineItems();
@@ -43,7 +71,8 @@ const ClientDebtsCard = ({ debt, snackbarRef }) => {
       <View style={styles.container}>
         <CardHeader
           value1={`SN: ${debt?.serialNumber}`}
-          value2={formatDate(debt?.dateCreated)}
+          date={debt?.dateCreated}
+          shop={debt?.sale?.shop?.name}
         />
 
         <SalesTable sales={items} fixHeight={false} />
@@ -73,6 +102,12 @@ const ClientDebtsCard = ({ debt, snackbarRef }) => {
               showCurrency
             />
 
+            <DataRow
+              key={5}
+              label={"Served by"}
+              value={debt?.createdByFullName}
+            />
+
             <CardFooter1
               btnTitle2="Hide"
               btnTitle1="Pay"
@@ -93,7 +128,7 @@ const ClientDebtsCard = ({ debt, snackbarRef }) => {
           <CardFooter2
             btnTitle="More"
             onBtnPress={toggleExpand}
-            label={isFullyPaid ? "Debt cleared" : ""}
+            renderLeft={renderLeft}
           />
         )}
       </View>

@@ -6,23 +6,21 @@ import Colors from "../../constants/Colors";
 
 import AppStatusBar from "../../components/AppStatusBar";
 import UserProfile from "../../components/UserProfile";
-import { SalesDropdownComponent } from "../../components/DropdownComponents";
+import {
+  MyDropDown,
+  SalesDropdownComponent,
+} from "../../components/DropdownComponents";
 import { formatNumberWithCommas, isValidNumber } from "../../utils/Utils";
 import { BlackScreen } from "../../components/BlackAndWhiteScreen";
 import { IconsComponent } from "../../components/MenuIcon";
 import Snackbar from "../../components/Snackbar";
 import { useRef } from "react";
-import { UserContext } from "../../context/UserContext";
-import SelectShopBar from "../../components/SelectShopBar";
+import { userData } from "../../context/UserContext";
 import PrimaryButton from "../../components/buttons/PrimaryButton";
 import { SaleEntryContext } from "../../context/SaleEntryContext";
 import { UserSessionUtils } from "../../utils/UserSessionUtils";
 import { SafeAreaView } from "react-native";
-import {
-  BARCODE_SCREEN,
-  SALES_REPORTS,
-  SHOP_SELECTION,
-} from "../../navigation/ScreenNames";
+import { BARCODE_SCREEN, SALES_REPORTS } from "../../navigation/ScreenNames";
 import SalesTable from "./components/SalesTable";
 import EnterSaleQtyModal from "./components/EnterSaleQtyModal";
 import ConfirmSaleModal from "./components/ConfirmSaleModal";
@@ -35,7 +33,7 @@ function SalesEntry({ navigation }) {
 
   const snackbarRef = useRef(null);
 
-  const { userParams, selectedShop, shops } = useContext(UserContext);
+  const { userParams, selectedShop, shops, setSelectedShop } = userData();
 
   const {
     selections,
@@ -54,7 +52,7 @@ function SalesEntry({ navigation }) {
     setUnitCost,
   } = useContext(SaleEntryContext);
 
-  const { isShopOwner, isShopAttendant, shopOwnerId } = userParams;
+  const { isShopAttendant } = userParams;
 
   const menuItems = [
     {
@@ -65,7 +63,7 @@ function SalesEntry({ navigation }) {
 
   const fetchProducts = async () => {
     setLoading(true);
-    const pdtList = await UserSessionUtils.getShopProducts(selectedShop?.id); //store the payload in local storage
+    const pdtList = await UserSessionUtils.getShopProducts(selectedShop?.id);
 
     setProducts(pdtList);
     fetchClients();
@@ -119,16 +117,22 @@ function SalesEntry({ navigation }) {
       <BlackScreen flex={isShopAttendant ? 12 : 10}>
         <UserProfile renderMenu renderNtnIcon={false} menuItems={menuItems} />
 
-        <View style={{ paddingHorizontal: 0, marginTop: 15 }}>
+        <View style={{ marginTop: 15 }}>
           {!isShopAttendant && shops?.length > 1 && (
-            <SelectShopBar
-              showIcon={false}
-              onPress={() => navigation.navigate(SHOP_SELECTION)}
-            />
+            <View style={{ paddingHorizontal: 10 }}>
+              <MyDropDown
+                data={shops?.filter((s) => !s?.name?.includes("All"))}
+                labelField={"name"}
+                valueField="id"
+                onChange={(e) => setSelectedShop(e)}
+                value={selectedShop}
+                search={false}
+              />
+            </View>
           )}
 
           <SalesDropdownComponent
-            disable={isShopOwner && selectedShop === null}
+            disable={!isShopAttendant && selectedShop?.name?.includes("All")}
             value={selection}
             products={products}
             handleChange={(t) => handleChange(t)}

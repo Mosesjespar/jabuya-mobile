@@ -2,13 +2,13 @@ import React, { useState } from "react";
 import { View, Text } from "react-native";
 import { formatDate } from "../../../utils/Utils";
 import { useNavigation } from "@react-navigation/native";
-import DataRow from "../../../components/cardComponents/DataRow";
+import DataRow from "../../../components/card_components/DataRow";
 import ChipButton2 from "../../../components/buttons/ChipButton2";
 import { STOCK_ENTRY_FORM } from "../../../navigation/ScreenNames";
-import CardHeader from "../../../components/cardComponents/CardHeader";
-import DataColumn from "../../../components/cardComponents/DataColumn";
+import CardHeader from "../../../components/card_components/CardHeader";
+import DataColumn from "../../../components/card_components/DataColumn";
 
-const StockPurchaseCard = ({ data }) => {
+const StockEntryCard = ({ data }) => {
   const [expanded, setExpanded] = useState(false);
 
   const navigation = useNavigation();
@@ -27,6 +27,7 @@ const StockPurchaseCard = ({ data }) => {
     expiryDate,
     supplierName,
     batchNumber,
+    remarks,
   } = data ?? {};
 
   return (
@@ -41,8 +42,9 @@ const StockPurchaseCard = ({ data }) => {
       }}
     >
       <CardHeader
-        value1={` SN: ${data?.serialNumber}`}
-        value2={formatDate(data?.dateCreated)}
+        value1={`SN: ${data?.serialNumber}`}
+        date={data?.dateCreated}
+        shop={data?.shopName}
       />
       <View
         style={{
@@ -84,6 +86,12 @@ const StockPurchaseCard = ({ data }) => {
           <DataRow label="Expiry date" value={formatDate(expiryDate, true)} />
           <DataRow label="Restock date" value={formatDate(dateCreated, true)} />
           <DataRow label="Supplier" value={supplierName} />
+          {remarks && (
+            <>
+              <DataRow label="Remarks" />
+              <Text>{remarks}</Text>
+            </>
+          )}
         </View>
       )}
 
@@ -122,4 +130,4 @@ const StockPurchaseCard = ({ data }) => {
   );
 };
 
-export default StockPurchaseCard;
+export default StockEntryCard;

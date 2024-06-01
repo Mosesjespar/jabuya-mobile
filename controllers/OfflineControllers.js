@@ -46,7 +46,7 @@ export const saveShopProductsOnDevice = async (
 
   if (currentPdts.length === 0 || refresh === true) {
     //only hit the api if no product is stored
-    console.log("saving offline");
+    console.log("saving pdts offline");
     await new BaseApiService(SHOP_PRODUCTS_ENDPOINT)
       .getRequestWithJsonResponse(searchParameters)
       .then(async (response) => {
@@ -95,6 +95,8 @@ export const saveShopClients = async (params, refresh = false) => {
 };
 
 export const saveShopDetails = async (isShopOwner, shopOwnerId) => {
+  let saved = false;
+
   const searchParameters = {
     limit: 0,
     offset: 0,
@@ -106,6 +108,11 @@ export const saveShopDetails = async (isShopOwner, shopOwnerId) => {
     .then(async (response) => {
       await UserSessionUtils.setShopCount(String(response.totalItems));
       await UserSessionUtils.setShops(response.records);
+      saved = true;
     })
-    .catch((error) => {});
+    .catch((error) => {
+      saved = false;
+    });
+
+  return saved;
 };
